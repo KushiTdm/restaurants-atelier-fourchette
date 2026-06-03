@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #2c2416;
+    background-color: #fdfcf8;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-terracotta-500 text-white px-7 py-3 font-sans font-medium text-sm tracking-wide hover:bg-terracotta-600 transition-colors duration-200;
+  }
+
+  .btn-outline {
+    @apply border border-bark-900 text-bark-900 px-7 py-3 font-sans font-medium text-sm tracking-wide hover:bg-bark-900 hover:text-white transition-colors duration-200;
+  }
+
+  .section-label {
+    @apply font-sans text-xs font-medium tracking-[0.2em] uppercase text-bark-700;
+  }
+
+  .divider-line {
+    @apply flex-1 h-px bg-bark-900 opacity-20;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #faf7f0;
+}
+::-webkit-scrollbar-thumb {
+  background: #c4603a;
+  border-radius: 3px;
+}
+
+/* Botanical SVG decoration */
+.botanical-deco {
+  opacity: 0.12;
+}
