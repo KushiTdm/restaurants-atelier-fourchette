@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
   Instagram,
   Facebook,
@@ -16,6 +18,11 @@ import {
   Menu,
   X,
 } from 'lucide-react';
+
+gsap.registerPlugin(ScrollTrigger);
+// Disable lag smoothing so animations keep frame-accurate timing even after
+// the tab regains focus (otherwise hidden-tab pauses can produce big jumps).
+gsap.ticker.lagSmoothing(0);
 
 const NAV_LINKS = [
   { label: 'Accueil', href: '#accueil' },
@@ -90,7 +97,7 @@ function MenuColumn({
   items: { name: string; desc: string; price: string }[];
 }) {
   return (
-    <div className="flex-1">
+    <div className="flex-1 menu-column">
       <div className="flex items-center gap-3 mb-6">
         <span className="divider-line" />
         <h3 className="font-serif text-sm font-medium tracking-[0.15em] uppercase text-bark-900 whitespace-nowrap">
@@ -124,6 +131,8 @@ export default function App() {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const [form, setForm] = useState({ guests: '2', date: '', time: '19:30' });
 
+  const mainRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', handler);
@@ -147,20 +156,202 @@ export default function App() {
     return () => observer.disconnect();
   }, []);
 
+  // ─── GSAP animations ───
+  useLayoutEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+
+    // Helper: explicit fromTo reveal — explicit endpoints avoid any reliance on
+    // the element's "current" computed value when the tween is created.
+    type StVars = NonNullable<gsap.TweenVars['scrollTrigger']>;
+    const reveal = (
+      target: gsap.TweenTarget,
+      from: gsap.TweenVars,
+      scrollTrigger: StVars,
+      extra: gsap.TweenVars = {}
+    ) =>
+      gsap.fromTo(
+        target,
+        { autoAlpha: 0, ...from },
+        {
+          autoAlpha: 1,
+          y: 0,
+          x: 0,
+          scale: 1,
+          duration: 0.8,
+          ease: 'power3.out',
+          ...extra,
+          scrollTrigger,
+        }
+      );
+
+    const ctx = gsap.context(() => {
+      // Hero — staggered entrance on load (no scrollTrigger, plays immediately)
+      gsap.fromTo(
+        '.hero-content > *',
+        { autoAlpha: 0, y: 32 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.9,
+          ease: 'power3.out',
+          stagger: 0.12,
+          delay: 0.15,
+        }
+      );
+
+      gsap.fromTo(
+        '.hero-image',
+        { autoAlpha: 0 },
+        { autoAlpha: 1, duration: 1.2, ease: 'power2.out' }
+      );
+
+      // Hero parallax — image drifts up as user scrolls past hero
+      gsap.fromTo(
+        '.hero-image img',
+        { y: 0 },
+        {
+          y: -120,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '#accueil',
+            start: 'top top',
+            end: 'bottom top',
+            scrub: true,
+            invalidateOnRefresh: true,
+          },
+        }
+      );
+
+      // Concept — parallax on image + botanical svg
+      gsap.fromTo(
+        '.concept-image img',
+        { y: -40, scale: 1.08 },
+        {
+          y: 40,
+          scale: 1.08,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '#concept',
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: 1,
+            invalidateOnRefresh: true,
+          },
+        }
+      );
+
+      gsap.fromTo(
+        '.botanical-svg',
+        { y: 40, rotate: -2 },
+        {
+          y: -40,
+          rotate: 4,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '#concept',
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: true,
+            invalidateOnRefresh: true,
+          },
+        }
+      );
+
+      // Concept content reveal — explicit endpoints, immune to from-state races
+      gsap.fromTo(
+        '.concept-content .section-label, .concept-content h2, .concept-content > p, .concept-content > div',
+        { autoAlpha: 0, y: 40 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.9,
+          ease: 'power3.out',
+          stagger: 0.1,
+          scrollTrigger: { trigger: '.concept-content', start: 'top 80%' },
+        }
+      );
+
+      // Menu — label + columns
+      reveal(
+        '#menu .section-label',
+        { y: 24 },
+        { trigger: '#menu', start: 'top 80%' },
+        { duration: 0.7 }
+      );
+      reveal(
+        '.menu-column',
+        { y: 40 },
+        { trigger: '#menu', start: 'top 70%' },
+        { stagger: 0.15 }
+      );
+
+      // Values — staggered cards
+      reveal(
+        '.value-card',
+        { y: 30 },
+        { trigger: '.values-section', start: 'top 80%' },
+        { stagger: 0.12, duration: 0.7 }
+      );
+
+      // Instagram grid — pop in staggered
+      reveal(
+        '.insta-item',
+        { y: 30, scale: 0.94 },
+        { trigger: '#galerie', start: 'top 75%' },
+        { stagger: 0.07, duration: 0.6, ease: 'power2.out' }
+      );
+
+      // Testimonials — fade in
+      reveal(
+        '.testimonial-wrap',
+        { y: 30 },
+        { trigger: '.testimonials-section', start: 'top 80%' }
+      );
+
+      // Reservation — slide in
+      reveal(
+        '.reservation-block > *',
+        { y: 32 },
+        { trigger: '#reserver', start: 'top 85%' },
+        { stagger: 0.12 }
+      );
+
+      // Footer columns — subtle fade
+      reveal(
+        '.footer-col',
+        { y: 20 },
+        { trigger: '#contact', start: 'top 85%' },
+        { stagger: 0.08, duration: 0.7, ease: 'power2.out' }
+      );
+
+      // Refresh once images / fonts have settled
+      const refresh = () => ScrollTrigger.refresh();
+      window.addEventListener('load', refresh);
+      const refreshTimer = window.setTimeout(refresh, 800);
+      return () => {
+        window.removeEventListener('load', refresh);
+        window.clearTimeout(refreshTimer);
+      };
+    }, mainRef);
+
+    return () => ctx.revert();
+  }, []);
+
   const prevTestimonial = () =>
     setTestimonialIdx((i) => (i - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
   const nextTestimonial = () =>
     setTestimonialIdx((i) => (i + 1) % TESTIMONIALS.length);
 
   return (
-    <div className="min-h-screen bg-cream-50 font-sans">
+    <div ref={mainRef} className="min-h-screen bg-cream-50 font-sans">
       {/* ─── NAVBAR ─── */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled ? 'bg-cream-50 shadow-sm' : 'bg-cream-50/95'
+          scrolled ? 'bg-cream-50/95 backdrop-blur-sm shadow-sm' : 'bg-cream-50/95'
         }`}
       >
-        <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <nav className="max-w-7xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <a href="#accueil" className="flex-shrink-0">
             <div className="font-serif font-semibold text-bark-900 leading-tight text-[17px]">
@@ -170,7 +361,7 @@ export default function App() {
           </a>
 
           {/* Desktop links */}
-          <ul className="hidden lg:flex items-center gap-7">
+          <ul className="hidden lg:flex items-center gap-5 xl:gap-7">
             {NAV_LINKS.map((link) => {
               const isActive = link.href.slice(1) === activeSection;
               return (
@@ -200,7 +391,7 @@ export default function App() {
 
           {/* Mobile toggle */}
           <button
-            className="lg:hidden text-bark-900"
+            className="lg:hidden text-bark-900 p-1"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menu"
           >
@@ -239,18 +430,18 @@ export default function App() {
       <section id="accueil" className="pt-16 min-h-screen flex">
         <div className="w-full grid grid-cols-1 lg:grid-cols-2">
           {/* Left content */}
-          <div className="flex flex-col justify-center px-8 md:px-16 lg:px-20 py-20 bg-cream-100">
+          <div className="hero-content flex flex-col justify-center px-6 sm:px-10 md:px-16 lg:px-20 py-16 sm:py-20 bg-cream-100">
             <p className="section-label mb-4">Cantine de saison</p>
-            <h1 className="font-serif text-4xl md:text-5xl lg:text-[54px] font-medium text-bark-900 leading-[1.1] mb-6">
+            <h1 className="font-serif text-[2.25rem] sm:text-5xl lg:text-[54px] font-medium text-bark-900 leading-[1.1] tracking-tight mb-6">
               Cuisine de saison &amp;<br />
               café de spécialité<br />
               <em>au cœur du quartier</em>
             </h1>
             <p className="font-sans text-bark-700 text-[15px] leading-relaxed mb-10 max-w-sm opacity-80">
-              Des assiettes généreuses, des produits frais<br />
+              Des assiettes généreuses, des produits frais
               et une ambiance chaleureuse du matin au soir.
             </p>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-3 sm:gap-4">
               <a href="#reserver" className="btn-primary">
                 Réserver une table
               </a>
@@ -261,11 +452,11 @@ export default function App() {
           </div>
 
           {/* Right image */}
-          <div className="relative min-h-[50vh] lg:min-h-0 overflow-hidden">
+          <div className="hero-image relative min-h-[50vh] lg:min-h-0 overflow-hidden">
             <img
               src="https://images.pexels.com/photos/1579739/pexels-photo-1579739.jpeg?auto=compress&cs=tinysrgb&w=900&h=800&fit=crop"
               alt="Intérieur du restaurant Atelier & Fourchette"
-              className="w-full h-full object-cover"
+              className="parallax-img w-full h-[115%] object-cover"
             />
             <div className="absolute inset-0 bg-bark-900/10" />
           </div>
@@ -275,22 +466,23 @@ export default function App() {
       {/* ─── CONCEPT ─── */}
       <section id="concept" className="grid grid-cols-1 lg:grid-cols-2">
         {/* Left image */}
-        <div className="relative min-h-[420px] overflow-hidden">
+        <div className="concept-image relative min-h-[360px] sm:min-h-[420px] overflow-hidden">
           <img
             src="https://images.pexels.com/photos/887827/pexels-photo-887827.jpeg?auto=compress&cs=tinysrgb&w=800&h=700&fit=crop"
             alt="Chef en cuisine"
-            className="w-full h-full object-cover"
+            className="parallax-img w-full h-full object-cover"
           />
         </div>
 
         {/* Right content */}
-        <div className="relative bg-cream-50 flex flex-col justify-center px-10 md:px-16 lg:px-20 py-20 overflow-hidden">
+        <div className="concept-content relative bg-cream-50 flex flex-col justify-center px-6 sm:px-10 md:px-16 lg:px-20 py-16 sm:py-20 overflow-hidden">
           {/* Botanical decoration */}
           <svg
-            className="absolute right-0 bottom-0 w-80 opacity-[0.09] pointer-events-none"
+            className="botanical-svg absolute right-0 bottom-0 w-64 sm:w-80 opacity-[0.09] pointer-events-none"
             viewBox="0 0 320 400"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
           >
             {/* Large background leaf */}
             <path d="M230 30 Q280 120 270 220 Q260 320 200 390 Q160 320 155 220 Q150 120 230 30Z" stroke="#2c2416" strokeWidth="1.5" fill="none"/>
@@ -313,7 +505,7 @@ export default function App() {
           </svg>
 
           <p className="section-label mb-4">Notre concept</p>
-          <h2 className="font-serif text-4xl md:text-[44px] font-medium text-bark-900 leading-[1.1] mb-6">
+          <h2 className="font-serif text-[2rem] sm:text-4xl md:text-[44px] font-medium text-bark-900 leading-[1.1] tracking-tight mb-6">
             Une cantine pensée<br />
             comme une maison<br />
             de quartier
@@ -331,9 +523,10 @@ export default function App() {
       </section>
 
       {/* ─── MENU ─── */}
-      <section id="menu" className="bg-cream-100 py-20 px-6">
+      <section id="menu" className="bg-cream-100 py-16 sm:py-20 px-6">
         <div className="max-w-5xl mx-auto">
           <p className="section-label text-center mb-3">Notre carte</p>
+          <h2 className="sr-only">Notre carte</h2>
           <div className="flex flex-col lg:flex-row gap-10 lg:gap-8 mt-10">
             <MenuColumn title="Entrées" items={ENTREES} />
             <div className="hidden lg:block w-px bg-bark-900 opacity-10" />
@@ -353,9 +546,9 @@ export default function App() {
       </section>
 
       {/* ─── VALUES ─── */}
-      <section className="bg-cream-200 py-14 px-6">
+      <section className="values-section bg-cream-200 py-12 sm:py-14 px-6">
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="flex items-start gap-5">
+          <div className="value-card flex items-start gap-5">
             <div className="flex-shrink-0 w-12 h-12 border border-bark-900/20 flex items-center justify-center">
               <Leaf className="w-5 h-5 text-bark-800" strokeWidth={1.5} />
             </div>
@@ -369,7 +562,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-start gap-5">
+          <div className="value-card flex items-start gap-5">
             <div className="flex-shrink-0 w-12 h-12 border border-bark-900/20 flex items-center justify-center">
               <UtensilsCrossed className="w-5 h-5 text-bark-800" strokeWidth={1.5} />
             </div>
@@ -383,7 +576,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-start gap-5">
+          <div className="value-card flex items-start gap-5">
             <div className="flex-shrink-0 w-12 h-12 border border-bark-900/20 flex items-center justify-center">
               <Sun className="w-5 h-5 text-bark-800" strokeWidth={1.5} />
             </div>
@@ -400,16 +593,16 @@ export default function App() {
       </section>
 
       {/* ─── INSTAGRAM ─── */}
-      <section id="galerie" className="py-16 px-6 bg-cream-50">
+      <section id="galerie" className="py-14 sm:py-16 px-6 bg-cream-50">
         <p className="section-label text-center mb-10">Suivez-nous sur Instagram</p>
-        <div className="max-w-5xl mx-auto grid grid-cols-3 md:grid-cols-6 gap-2">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
           {INSTAGRAM_PHOTOS.map((src, i) => (
             <a
               key={i}
               href="https://instagram.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="aspect-square overflow-hidden group"
+              className="insta-item aspect-square overflow-hidden group"
             >
               <img
                 src={src}
@@ -425,12 +618,12 @@ export default function App() {
       </section>
 
       {/* ─── TESTIMONIALS ─── */}
-      <section className="py-16 px-6 bg-cream-100">
+      <section className="testimonials-section py-14 sm:py-16 px-6 bg-cream-100">
         <p className="section-label text-center mb-10">Ils parlent de nous</p>
-        <div className="max-w-4xl mx-auto relative">
+        <div className="testimonial-wrap max-w-4xl mx-auto relative">
           <button
             onClick={prevTestimonial}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-10 w-9 h-9 border border-bark-900/20 flex items-center justify-center hover:bg-cream-200 transition-colors z-10 bg-cream-50"
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 sm:-translate-x-4 md:-translate-x-10 w-9 h-9 border border-bark-900/20 flex items-center justify-center hover:bg-cream-200 transition-colors z-10 bg-cream-50"
             aria-label="Précédent"
           >
             <ChevronLeft className="w-4 h-4 text-bark-900" />
@@ -442,8 +635,8 @@ export default function App() {
                 key={i}
                 className={`bg-cream-50 p-6 border transition-all duration-300 ${
                   i === testimonialIdx
-                    ? 'border-terracotta-200 shadow-sm'
-                    : 'border-cream-300'
+                    ? 'border-terracotta-200 shadow-sm md:scale-[1.02]'
+                    : 'border-cream-300 hidden md:block'
                 }`}
               >
                 <StarRating count={t.stars} />
@@ -464,7 +657,7 @@ export default function App() {
 
           <button
             onClick={nextTestimonial}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-10 w-9 h-9 border border-bark-900/20 flex items-center justify-center hover:bg-cream-200 transition-colors z-10 bg-cream-50"
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 sm:translate-x-4 md:translate-x-10 w-9 h-9 border border-bark-900/20 flex items-center justify-center hover:bg-cream-200 transition-colors z-10 bg-cream-50"
             aria-label="Suivant"
           >
             <ChevronRight className="w-4 h-4 text-bark-900" />
@@ -487,22 +680,22 @@ export default function App() {
       </section>
 
       {/* ─── RESERVATION ─── */}
-      <section id="reserver" className="bg-terracotta-500 py-14 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col lg:flex-row items-center gap-10">
+      <section id="reserver" className="bg-terracotta-500 py-12 sm:py-14 px-6">
+        <div className="reservation-block max-w-5xl mx-auto flex flex-col lg:flex-row items-start lg:items-center gap-8 lg:gap-10">
           <div className="flex-shrink-0 text-white">
             <div className="flex items-center gap-3 mb-2">
               <UtensilsCrossed className="w-8 h-8 opacity-70" strokeWidth={1.5} />
             </div>
-            <h2 className="font-serif text-3xl md:text-4xl font-medium leading-tight">
+            <h2 className="font-serif text-3xl md:text-4xl font-medium leading-tight tracking-tight">
               Réservez<br />votre table
             </h2>
           </div>
 
           <form
-            className="flex flex-col sm:flex-row flex-wrap items-end gap-4 flex-1 w-full"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row lg:flex-wrap lg:items-end gap-4 flex-1 w-full"
             onSubmit={(e) => e.preventDefault()}
           >
-            <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
+            <div className="flex flex-col gap-1 flex-1 lg:min-w-[140px]">
               <label className="font-sans text-white/80 text-xs font-medium tracking-wide">
                 Nombre de personnes
               </label>
@@ -519,7 +712,7 @@ export default function App() {
               </select>
             </div>
 
-            <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
+            <div className="flex flex-col gap-1 flex-1 lg:min-w-[140px]">
               <label className="font-sans text-white/80 text-xs font-medium tracking-wide">
                 Date
               </label>
@@ -531,7 +724,7 @@ export default function App() {
               />
             </div>
 
-            <div className="flex flex-col gap-1 flex-1 min-w-[120px]">
+            <div className="flex flex-col gap-1 flex-1 lg:min-w-[120px]">
               <label className="font-sans text-white/80 text-xs font-medium tracking-wide">
                 Heure
               </label>
@@ -552,7 +745,7 @@ export default function App() {
 
             <button
               type="submit"
-              className="bg-white text-terracotta-500 font-sans font-semibold text-sm px-7 py-2.5 hover:bg-cream-100 transition-colors duration-200 whitespace-nowrap"
+              className="bg-white text-terracotta-500 font-sans font-semibold text-sm px-7 py-3 hover:bg-cream-100 transition-colors duration-200 whitespace-nowrap sm:col-span-2 lg:col-span-1"
             >
               Réserver
             </button>
@@ -563,9 +756,9 @@ export default function App() {
       {/* ─── FOOTER ─── */}
       <footer id="contact" className="bg-bark-900 text-cream-200 pt-14 pb-6 px-6">
         <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-12">
             {/* Brand */}
-            <div>
+            <div className="footer-col">
               <div className="font-serif font-semibold text-cream-100 text-lg leading-tight mb-1">
                 Atelier &amp;<br />Fourchette
               </div>
@@ -602,7 +795,7 @@ export default function App() {
             </div>
 
             {/* Address */}
-            <div>
+            <div className="footer-col">
               <h4 className="font-sans font-semibold text-cream-100 text-[11px] tracking-widest uppercase mb-4">
                 Adresse
               </h4>
@@ -623,7 +816,7 @@ export default function App() {
             </div>
 
             {/* Hours */}
-            <div>
+            <div className="footer-col">
               <h4 className="font-sans font-semibold text-cream-100 text-[11px] tracking-widest uppercase mb-4">
                 Horaires
               </h4>
@@ -643,7 +836,7 @@ export default function App() {
             </div>
 
             {/* Contact */}
-            <div>
+            <div className="footer-col">
               <h4 className="font-sans font-semibold text-cream-100 text-[11px] tracking-widest uppercase mb-4">
                 Contact
               </h4>
@@ -671,11 +864,11 @@ export default function App() {
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-cream-400/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="border-t border-cream-400/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
             <p className="font-sans text-cream-400 text-xs opacity-60">
               © 2024 Atelier &amp; Fourchette — Tous droits réservés
             </p>
-            <div className="flex gap-6">
+            <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
               {['Mentions légales', 'Politique de confidentialité', 'Plan du site'].map((link) => (
                 <a
                   key={link}

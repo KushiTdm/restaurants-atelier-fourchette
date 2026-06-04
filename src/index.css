@@ -5,23 +5,51 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     color: #2c2416;
     background-color: #fdfcf8;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-feature-settings: 'lnum', 'kern';
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Smoother serif italic */
+  em {
+    font-style: italic;
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-terracotta-500 text-white px-7 py-3 font-sans font-medium text-sm tracking-wide hover:bg-terracotta-600 transition-colors duration-200;
+    @apply inline-flex items-center justify-center bg-terracotta-500 text-white px-7 py-3 font-sans font-medium text-sm tracking-wide hover:bg-terracotta-600 transition-colors duration-200;
   }
 
   .btn-outline {
-    @apply border border-bark-900 text-bark-900 px-7 py-3 font-sans font-medium text-sm tracking-wide hover:bg-bark-900 hover:text-white transition-colors duration-200;
+    @apply inline-flex items-center justify-center border border-bark-900 text-bark-900 px-7 py-3 font-sans font-medium text-sm tracking-wide hover:bg-bark-900 hover:text-white transition-colors duration-200;
   }
 
   .section-label {
@@ -30,6 +58,12 @@
 
   .divider-line {
     @apply flex-1 h-px bg-bark-900 opacity-20;
+  }
+
+  /* Reveal hooks — GSAP toggles their visibility */
+  .reveal,
+  .reveal-stagger > * {
+    will-change: transform, opacity;
   }
 }
 
@@ -48,4 +82,15 @@
 /* Botanical SVG decoration */
 .botanical-deco {
   opacity: 0.12;
+}
+
+/* Parallax wrappers — `overflow-hidden` on the parent keeps the translated image in frame */
+.parallax-img {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Prevent horizontal scrollbar on small screens with translated elements */
+body {
+  overflow-x: hidden;
 }
