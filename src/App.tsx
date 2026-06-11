@@ -50,12 +50,12 @@ const DESSERTS = [
 ];
 
 const INSTAGRAM_PHOTOS = [
-  'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-  'https://images.pexels.com/photos/312418/pexels-photo-312418.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-  'https://images.pexels.com/photos/941861/pexels-photo-941861.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-  'https://images.pexels.com/photos/1998920/pexels-photo-1998920.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-  'https://images.pexels.com/photos/1307698/pexels-photo-1307698.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
-  'https://images.pexels.com/photos/3184183/pexels-photo-3184183.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop',
+  '/banquette-table.webp',
+  '/enseigne.webp',
+  '/grande-table.webp',
+  '/plat-carotte.webp',
+  '/plat-vegan.webp',
+  '/table-bouquet.webp',
 ];
 
 const TESTIMONIALS = [
@@ -454,7 +454,7 @@ export default function App() {
           {/* Right image */}
           <div className="hero-image relative min-h-[50vh] lg:min-h-0 overflow-hidden">
             <img
-              src="https://images.pexels.com/photos/1579739/pexels-photo-1579739.jpeg?auto=compress&cs=tinysrgb&w=900&h=800&fit=crop"
+              src="/tables-bibliotheque.webp"
               alt="Intérieur du restaurant Atelier & Fourchette"
               className="parallax-img w-full h-[115%] object-cover"
             />
@@ -468,7 +468,7 @@ export default function App() {
         {/* Left image */}
         <div className="concept-image relative min-h-[360px] sm:min-h-[420px] overflow-hidden">
           <img
-            src="https://images.pexels.com/photos/887827/pexels-photo-887827.jpeg?auto=compress&cs=tinysrgb&w=800&h=700&fit=crop"
+            src="/table-murnoir.webp"
             alt="Chef en cuisine"
             className="parallax-img w-full h-full object-cover"
           />
