@@ -5,6 +5,8 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    /* Offset anchor jumps so sections don't land under the fixed 4rem navbar. */
+    scroll-padding-top: 4rem;
     -webkit-text-size-adjust: 100%;
   }
 
@@ -93,4 +95,57 @@
 /* Prevent horizontal scrollbar on small screens with translated elements */
 body {
   overflow-x: hidden;
+}
+
+/* ─── Testimonials marquee ───
+   The track holds two identical copies of the list. The animation slides it
+   left by exactly one copy, then loops — giving a seamless infinite scroll.
+   Mobile shows 1 card per view, desktop 3. Card spacing comes from each
+   card's own horizontal padding (not `gap`) so the per-copy width stays an
+   exact multiple of the track width and the loop never drifts. */
+.testi-marquee {
+  width: 100%;
+  overflow: hidden;
+}
+
+.testi-track {
+  display: flex;
+  width: 100%;
+  animation: testi-marquee-mobile 26s linear infinite;
+}
+
+.testi-track:hover {
+  animation-play-state: paused;
+}
+
+.testi-card {
+  flex: 0 0 100%;
+  padding: 0 8px;
+}
+
+@keyframes testi-marquee-mobile {
+  from { transform: translateX(0); }
+  to { transform: translateX(-600%); } /* 6 cards × 100% */
+}
+
+@media (min-width: 768px) {
+  .testi-card {
+    flex-basis: 33.3333%;
+    padding: 0 10px;
+  }
+  .testi-track {
+    animation-name: testi-marquee-desktop;
+    animation-duration: 36s;
+  }
+}
+
+@keyframes testi-marquee-desktop {
+  from { transform: translateX(0); }
+  to { transform: translateX(-200%); } /* 6 cards × 33.3333% */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .testi-track {
+    animation: none;
+  }
 }
